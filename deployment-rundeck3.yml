@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+        name: rundeck-site-helm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rundeck-site-helm
+      release: rundeck-site
+  template:
+    metadata:
+      labels:
+        app: rundeck-site-helm
+        release: rundeck-site
+    spec:
+      containers:
+      - name: rundeck-site-helm
+        image: rundeck/rundeck:3.1.2
+        imagePullPolicy: Always
+        env:
+          - name: RUNDECK_GRAILS_URL
+            value: "http://publicIP:4440"
+          - name: JVM_MAX_RAM_PERCENTAGE
+            value: "75"
+          - name: RUNDECK_SERVER_ADDRESS
+            value: "0.0.0.0"
+          - name: RUNDECK_DATABASE_DRIVER
+            value: "org.mariadb.jdbc.Driver"
+          - name: RUNDECK_QUARTZ_THREADPOOL_THREADCOUNT
+            value: "500"
+          - name: RUNDECK_PLUGIN_CLUSTER_HEARTBEAT_CONSIDERDEAD
+            value: "180"
+          - name: RUNDECK_PLUGIN_CLUSTER_AUTOTAKEOVER_ENABLED
+            value: "true"
+          - name: RUNDECK_PLUGIN_CLUSTER_AUTOTAKEOVER_POLICY
+            value: "any"
+          - name: RUNDECK_PLUGIN_CLUSTER_AUTOTAKEOVER_CONFIG_ALLOWED
+            value: "yes"
+          - name: RUNDECK_PLUGIN_CLUSTER_AUTOTAKEOVER_DELAY
+            value: "30"
+          - name: RUNDECK_PLUGIN_CLUSTER_AUTOTAKEOVER_SLEEP
+            value: "30"
+        ports:
+        - containerPort: 4440
