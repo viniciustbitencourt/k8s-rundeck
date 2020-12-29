@@ -23,8 +23,6 @@ spec:
             value: "http://publicIP:4440"
           - name: JVM_MAX_RAM_PERCENTAGE
             value: "75"
-          - name: RUNDECK_SERVER_ADDRESS
-            value: "0.0.0.0"
           - name: RUNDECK_DATABASE_DRIVER
             value: "org.mariadb.jdbc.Driver"
           - name: RUNDECK_QUARTZ_THREADPOOL_THREADCOUNT
