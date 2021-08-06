@@ -1,0 +1,118 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: rundeck-nginx
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/session-cookie-name: "route"
+    nginx.ingress.kubernetes.io/session-cookie-expires: "172800"
+    nginx.ingress.kubernetes.io/session-cookie-max-age: "172800"
+spec:
+  rules:
+  - host: localhost
+    http:
+      paths:
+      - backend:
+          serviceName: rundeck
+          servicePort: 8080
+        path: /
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: rundeck-svc
+spec:
+  type: LoadBalancer
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 4440
+  selector:
+    app: rundeck-svc
+  externalTrafficPolicy: Local
+  sessionAffinity: ClientIP
+
+---
+
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: rundeckpro
+  namespace: default
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: rundeck-deploy
+    spec:
+      containers:
+        image: rundeck/rundeck:3.3.11
+        resources:
+          limits: 
+            memory: "4Gi"
+            cpu: "2000m"
+        args: ["-Dlogging.config=/home/rundeck/server/config/logback.groovy"]
+        volumeMounts:
+          - mountPath: /home/rundeck/etc/admin-role.aclpolicy
+            name: acl
+            subPath: admin-role.aclpolicy
+        env:
+        - name: RUNDECK_GRAILS_URL
+          value: "http://rundeck-devops.com"
+        - name: RUNDECK_DATABASE_DRIVER
+          value: "com.mysql.jdbc.Driver"
+        - name: RUNDECK_DATABASE_URL
+          value: "jdbc:mysql://mysql-svc:3306/rundeckdb?autoReconnect=true&useSSL=false"
+        - name: RUNDECK_DATABASE_USERNAME
+          value: "rundeck"
+        - name: RUNDECK_DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-rundeckuser
+              key: password
+        #HEARBEAT
+        - name: RUNDECK_PLUGIN_CLUSTER_HEARTBEAT_CONSIDERDEAD
+          value: "120"
+        - name: RUNDECK_PLUGIN_CLUSTER_AUTOTAKEOVER_SLEEP
+          value: "10"
+        #TAKEOVER
+        - name: RUNDECK_PLUGIN_CLUSTER_AUTOTAKEOVER_ENABLED
+          value: "true"
+        - name: RUNDECK_PLUGIN_CLUSTER_AUTOTAKEOVER_SLEEP
+          value: "5"
+        - name: RUNDECK_PLUGIN_CLUSTER_AUTOTAKEOVER_POLICY
+          value: "RemoteExecution"
+        #REMOTE POLICIES
+        - name: RUNDECK_PLUGIN_CLUSTER_REMOTEEXECUTION_ENABLED
+          value: "true"
+        - name: RUNDECK_PLUGIN_CLUSTER_REMOTEEXECUTION_ALLOWEDTAGS
+          value: "*"
+        - name: RUNDECK_PLUGIN_CLUSTER_REMOTEEXECUTION_PREFERREDTAGS
+          value: "linux"
+        ports:
+        - containerPort: 4440
+        livenessProbe:
+          # an http probe
+          httpGet:
+            path: /
+            port: 4440
+            scheme: HTTP
+          initialDelaySeconds: 500
+          periodSeconds: 120
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 4440
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      volumes:
+      - name: acl
+        secret:
+          secretName: rundeck-admin-acl
+          items:
+          - key: admin-role.aclpolicy
+            path: admin-role.aclpolicy
